@@ -14,28 +14,41 @@ def get_client():
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     json_path = "service_account.json"
     
-    # 스트림릿 Secrets에서 키 가져오기
-    if "private_key" in st.secrets:
-        service_account_info = {
-            "type": "service_account",
-            "project_id": st.secrets["project_id"],
-            "private_key_id": st.secrets["private_key_id"],
-            "private_key": st.secrets["private_key"],
-            "client_email": st.secrets["client_email"],
-            "client_id": st.secrets["client_id"],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": st.secrets["client_x509_cert_url"]
-        }
-        with open(json_path, "w") as f: json.dump(service_account_info, f)
+    # 1. 파일이 없으면? -> 스트림릿 Secrets에서 꺼내서 만든다!
+    if not os.path.exists(json_path):
+        # (1) 우리가 아까 저장한 GOOGLE_SHEET_JSON 방식을 먼저 찾음
+        if "GOOGLE_SHEET_JSON" in st.secrets:
+            json_content = st.secrets["GOOGLE_SHEET_JSON"]
+            with open(json_path, "w") as f:
+                f.write(json_content)
+            print("✅ 스트림릿 Secrets(GOOGLE_SHEET_JSON)에서 인증 파일을 생성했습니다.")
+            
+        # (2) 혹시 옛날 방식(낱개 저장)일 경우를 대비해 예비책으로 남겨둠
+        elif "private_key" in st.secrets:
+            service_account_info = {
+                "type": "service_account",
+                "project_id": st.secrets["project_id"],
+                "private_key_id": st.secrets["private_key_id"],
+                "private_key": st.secrets["private_key"],
+                "client_email": st.secrets["client_email"],
+                "client_id": st.secrets["client_id"],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": st.secrets["client_x509_cert_url"]
+            }
+            with open(json_path, "w") as f: json.dump(service_account_info, f)
+            
+        else:
+            # 둘 다 없으면 에러!
+            st.error("❌ 에러: Secrets에 'GOOGLE_SHEET_JSON' 키가 없습니다.")
+            return None
         
     creds = ServiceAccountCredentials.from_json_keyfile_name(json_path, scope)
     return gspread.authorize(creds)
 
 def get_data(sheet_name):
     client = get_client()
-    # ⚠️ 여기서 파일 이름을 정확히 찾아야 합니다!
     return client.open("Global Well-Dying Archive").worksheet(sheet_name)
 
 # ---------------------------
@@ -59,10 +72,10 @@ with st.sidebar:
                 st.success(f"{new_interval}분으로 변경 완료!")
                 st.cache_data.clear()
         
-        # ⭐ [수정됨] 에러를 숨기지 않고 그대로 보여줍니다!
+        # 에러 메시지 자세히 보기
         except Exception as e:
             st.error(f"⚠️ 에러 발생: {e}")
-            st.caption("힌트: 구글 시트 이름이나 공유 권한을 확인하세요.")
+            st.caption("힌트: Secrets 설정이나 구글 시트 이름을 확인하세요.")
 
     # --- 키워드/금지어/사이트 관리 ---
     with st.expander("🔍 키워드 관리"):
