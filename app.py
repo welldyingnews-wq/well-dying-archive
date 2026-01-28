@@ -35,6 +35,7 @@ def get_client():
 
 def get_data(sheet_name):
     client = get_client()
+    # ⚠️ 여기서 파일 이름을 정확히 찾아야 합니다!
     return client.open("Global Well-Dying Archive").worksheet(sheet_name)
 
 # ---------------------------
@@ -57,30 +58,40 @@ with st.sidebar:
                 sh_settings.update_cell(2, 2, new_interval)
                 st.success(f"{new_interval}분으로 변경 완료!")
                 st.cache_data.clear()
-        except: st.error("'Settings' 시트가 없습니다.")
+        
+        # ⭐ [수정됨] 에러를 숨기지 않고 그대로 보여줍니다!
+        except Exception as e:
+            st.error(f"⚠️ 에러 발생: {e}")
+            st.caption("힌트: 구글 시트 이름이나 공유 권한을 확인하세요.")
 
     # --- 키워드/금지어/사이트 관리 ---
     with st.expander("🔍 키워드 관리"):
-        new_keyword = st.text_input("새 키워드")
-        if st.button("키워드 저장"):
-            if new_keyword:
-                get_data("Keywords").append_row([new_keyword])
-                st.success("저장 완료")
+        try:
+            new_keyword = st.text_input("새 키워드")
+            if st.button("키워드 저장"):
+                if new_keyword:
+                    get_data("Keywords").append_row([new_keyword])
+                    st.success("저장 완료")
+        except Exception as e: st.error(f"에러: {e}")
                 
     with st.expander("🚫 금지어 관리"):
-        new_ban_word = st.text_input("새 금지어")
-        if st.button("금지어 저장"):
-            if new_ban_word:
-                get_data("BanWords").append_row([new_ban_word])
-                st.success("저장 완료")
+        try:
+            new_ban_word = st.text_input("새 금지어")
+            if st.button("금지어 저장"):
+                if new_ban_word:
+                    get_data("BanWords").append_row([new_ban_word])
+                    st.success("저장 완료")
+        except Exception as e: st.error(f"에러: {e}")
 
     with st.expander("📡 사이트 관리"):
-        name = st.text_input("사이트명")
-        url = st.text_input("RSS URL")
-        if st.button("사이트 저장"):
-            if name and url:
-                get_data("Sites").append_row([name, url])
-                st.success("저장 완료")
+        try:
+            name = st.text_input("사이트명")
+            url = st.text_input("RSS URL")
+            if st.button("사이트 저장"):
+                if name and url:
+                    get_data("Sites").append_row([name, url])
+                    st.success("저장 완료")
+        except Exception as e: st.error(f"에러: {e}")
 
     st.divider()
     if st.button("🔄 새로고침"):
