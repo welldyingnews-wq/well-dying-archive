@@ -1,1 +1,9 @@
-
+google-generativeai
+gspread
+oauth2client
+pandas
+requests
+pygooglenews==0.1.3
+python-dotenv
+streamlit
+beautifulsoup4
