@@ -3,8 +3,8 @@ name: Well-Dying News Scraper
 on:
   push: # ⭐ 파일을 저장(Commit)하는 순간 즉시 실행됩니다! (테스트용)
   schedule:
-    # 매일 한국시간 아침 9시, 오후 6시 실행 (UTC 기준 0시, 9시)
-    - cron: '0 0,9 * * *'
+    # 30분마다
+    - cron: '*/30 * * * *'
   workflow_dispatch: # 깃허브 웹에서 버튼으로 실행 가능
 
 jobs:
