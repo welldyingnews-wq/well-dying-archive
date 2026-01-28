@@ -1,0 +1,10 @@
+google-generativeai
+gspread
+oauth2client
+pandas
+requests
+pygooglenews
+python-dotenv
+feedparser
+streamlit
+beautifulsoup4
