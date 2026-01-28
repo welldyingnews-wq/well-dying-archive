@@ -1,9 +1,9 @@
-google-generativeai
+streamlit>=1.30.0
+altair<6
 gspread
 oauth2client
 pandas
 requests
 python-dotenv
 feedparser
-streamlit
 beautifulsoup4
