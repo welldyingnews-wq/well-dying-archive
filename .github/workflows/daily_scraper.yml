@@ -3,7 +3,7 @@ name: Well-Dying News Scraper
 on:
   push:
   schedule:
-    - cron: '*/30 * * * *' # 30분마다
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -23,25 +23,25 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: 4. 구글 인증 파일 생성
-      # 깃허브 Secret 내용을 파일로 만듭니다.
+      # ⭐ [수정됨] 깃허브 Secret 이름(GOOGLE_SHEET_JSON)과 똑같이 맞춰야 합니다!
       run: |
         echo '${{ secrets.GOOGLE_SHEET_JSON }}' > service_account.json
 
     - name: 5. 수집기 실행
       env:
-        # [필수 1] Supabase (저장소)
+        # Supabase 열쇠
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         
-        # [필수 2] 구글 시트 (설정 읽기용)
+        # 구글 시트 열쇠 (위에서 파일을 만들었으니 경로는 service_account.json)
         GOOGLE_SHEET_JSON: ${{ secrets.GOOGLE_SHEET_JSON }}
         GOOGLE_SHEET_JSON_PATH: service_account.json
         
-        # [필수 3] 네이버 검색
+        # 네이버 열쇠
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         
-        # [선택] 미래를 위해 미리 넣어두는 키들 (지금 안 써도 에러 안 남)
+        # 기타 키들
         GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
         NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
