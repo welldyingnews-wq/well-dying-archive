@@ -12,15 +12,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ==========================================
-# 0. 금지어 목록 (이 단어가 제목에 있으면 수집 안 함!)
-# ==========================================
-# 여기에 걸러내고 싶은 단어를 계속 추가하시면 됩니다.
-EXCLUDE_KEYWORDS = [
-    "게임", "Game", "주식", "증시", "종목", "영화", "Movie", "드라마", 
-    "웹툰", "리뷰", "Review", "시황", "캐릭터", "공략", "이벤트", "할인"
-]
-
-# ==========================================
 # 1. 설정 및 초기화
 # ==========================================
 def get_sheet_client():
@@ -32,40 +23,51 @@ def get_sheet_client():
 def load_configs(client):
     wb = client.open("Global Well-Dying Archive")
     
+    # 1. 국가 설정 로드
     targets = []
     try:
         for r in wb.worksheet("Config").get_all_records():
             if r.get('국가코드'): targets.append({'code': r['국가코드'], 'lang': r['언어'], 'name': r['국가명']})
     except: targets = [{'code': 'US', 'lang': 'en', 'name': '미국(기본)'}]
 
+    # 2. 검색 키워드 로드
     keywords = []
     try:
         for r in wb.worksheet("Keywords").get_all_records():
             if r.get('키워드'): keywords.append(r['키워드'])
     except: keywords = ["Euthanasia"]
 
+    # 3. RSS 사이트 로드
     sites = []
     try:
         for r in wb.worksheet("Sites").get_all_records():
             if r.get('RSS주소'): sites.append({'name': r['사이트명'], 'url': r['RSS주소']})
     except: sites = []
 
-    return targets, keywords, sites
+    # 4. [NEW] 금지어 로드 (시트에서 가져옴!)
+    ban_words = []
+    try:
+        for r in wb.worksheet("BanWords").get_all_records():
+            if r.get('금지어'): ban_words.append(r['금지어'])
+    except: 
+        # 시트가 없거나 비었을 때 기본값
+        ban_words = ["게임", "주식", "증시", "드라마", "웹툰"]
+
+    return targets, keywords, sites, ban_words
 
 # ==========================================
-# 2. 필터링 함수 (핵심!)
+# 2. 필터링 함수
 # ==========================================
-def is_junk(title):
-    # 1. 금지어가 포함되어 있는지 확인
-    for bad_word in EXCLUDE_KEYWORDS:
+def is_junk(title, ban_words):
+    for bad_word in ban_words:
         if bad_word.lower() in title.lower():
-            return True # 쓰레기 기사임
-    return False # 통과
+            return True
+    return False
 
 # ==========================================
-# 3. 수집기 (직접 통신 + 필터링 적용)
+# 3. 수집기
 # ==========================================
-def fetch_google_news_direct(keywords, targets):
+def fetch_google_news_direct(keywords, targets, ban_words):
     results = []
     base_url = "https://news.google.com/rss/search"
     
@@ -88,10 +90,8 @@ def fetch_google_news_direct(keywords, targets):
                 feed = feedparser.parse(rss_url)
                 
                 for entry in feed.entries[:2]:
-                    # 여기서 금지어 체크!
-                    if is_junk(entry.title):
-                        continue 
-
+                    if is_junk(entry.title, ban_words): continue # 금지어 체크
+                    
                     results.append({
                         'title': entry.title,
                         'link': entry.link,
@@ -100,14 +100,14 @@ def fetch_google_news_direct(keywords, targets):
             except: pass
     return results
 
-def fetch_rss_sites(sites):
+def fetch_rss_sites(sites, ban_words):
     results = []
     for site in sites:
         try:
             feed = feedparser.parse(site['url'])
             for entry in feed.entries[:3]:
-                if is_junk(entry.title): continue # 금지어 체크
-
+                if is_junk(entry.title, ban_words): continue
+                
                 results.append({
                     'title': entry.title,
                     'link': entry.link,
@@ -116,7 +116,7 @@ def fetch_rss_sites(sites):
         except: pass
     return results
 
-def fetch_naver_news(keywords):
+def fetch_naver_news(keywords, ban_words):
     results = []
     client_id = os.getenv("NAVER_CLIENT_ID")
     client_secret = os.getenv("NAVER_CLIENT_SECRET")
@@ -132,7 +132,7 @@ def fetch_naver_news(keywords):
             res = requests.get(url, headers=headers).json()
             for item in res.get('items', []):
                 title = item['title'].replace('<b>','').replace('</b>','')
-                if is_junk(title): continue # 금지어 체크
+                if is_junk(title, ban_words): continue
 
                 results.append({
                     'title': title,
@@ -148,12 +148,14 @@ def fetch_naver_news(keywords):
 def main():
     print("🚀 스마트 수집기(Smart Light) 가동 시작...")
     client = get_sheet_client()
-    targets, keywords, sites = load_configs(client)
+    targets, keywords, sites, ban_words = load_configs(client)
+    
+    print(f"🚫 적용된 금지어: {ban_words}")
     
     all_news = []
-    all_news.extend(fetch_naver_news(keywords))
-    all_news.extend(fetch_google_news_direct(keywords, targets))
-    all_news.extend(fetch_rss_sites(sites))
+    all_news.extend(fetch_naver_news(keywords, ban_words))
+    all_news.extend(fetch_google_news_direct(keywords, targets, ban_words))
+    all_news.extend(fetch_rss_sites(sites, ban_words))
     
     print(f"📦 필터링 후 {len(all_news)}개 기사 확보. 저장 시작...")
     
@@ -164,8 +166,6 @@ def main():
     for news in all_news:
         if news['link'] in existing_links: continue
         
-        # E열(요약)에 엑셀 함수를 넣어서 자동 번역되게 함!
-        # D열(제목) 값을 한국어로 번역하라는 명령
         translate_formula = f'=GOOGLETRANSLATE("{news["title"]}", "auto", "ko")'
 
         row = [
@@ -173,7 +173,7 @@ def main():
             news['source_type'],
             "수집됨",
             news['title'],
-            translate_formula, # ⭐ 여기가 핵심! (엑셀 함수가 들어감)
+            translate_formula,
             "",
             "",
             news['link']
@@ -181,9 +181,8 @@ def main():
         new_rows.append(row)
 
     if new_rows:
-        # append_rows에서 value_input_option='USER_ENTERED'를 써야 함수가 작동함
         sheet.append_rows(new_rows, value_input_option='USER_ENTERED')
-        print(f"💾 {len(new_rows)}개 뉴스 저장 완료! (번역 함수 포함)")
+        print(f"💾 {len(new_rows)}개 뉴스 저장 완료!")
     else:
         print("☁️ 새로 업데이트된 뉴스가 없습니다.")
 
