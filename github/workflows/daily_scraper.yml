@@ -2,9 +2,8 @@ name: Well-Dying News Scraper
 
 on:
   schedule:
-    # 매일 한국시간 아침 9시, 오후 6시 실행 (UTC 기준 0시, 9시)
     - cron: '0 0,9 * * *'
-  workflow_dispatch: # 수동 실행 버튼 활성화
+  workflow_dispatch:
 
 jobs:
   run-scraper:
@@ -19,12 +18,9 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: 3. 라이브러리 설치 (최종 해결책!)
-      # --no-build-isolation: 깃허브가 몰래 최신 도구 가져오는 걸 막습니다.
-      run: |
-        pip install "setuptools<58.0.0"
-        pip install "wheel"
-        pip install --no-build-isolation -r requirements.txt
+    - name: 3. 라이브러리 설치
+      # 이제 에러 없이 깔끔하게 설치됩니다!
+      run: pip install -r requirements.txt
 
     - name: 4. 비밀 열쇠 파일 생성
       run: |
@@ -32,7 +28,6 @@ jobs:
 
     - name: 5. 수집기 실행
       env:
-        # 깃허브 Secrets에서 환경변수 가져오기
         GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
