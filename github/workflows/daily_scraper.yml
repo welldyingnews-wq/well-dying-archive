@@ -1,6 +1,7 @@
 name: Well-Dying News Scraper
 
 on:
+  push: # ⭐ [추가됨] 이 파일을 저장(Commit)하면 즉시 실행됩니다!
   schedule:
     - cron: '0 0,9 * * *'
   workflow_dispatch:
@@ -19,7 +20,7 @@ jobs:
         python-version: '3.9'
 
     - name: 3. 라이브러리 설치
-      # 이제 에러 없이 깔끔하게 설치됩니다!
+      # 에러 없이 깔끔하게 설치
       run: pip install -r requirements.txt
 
     - name: 4. 비밀 열쇠 파일 생성
