@@ -1,9 +1,42 @@
-google-generativeai
-gspread
-oauth2client
-pandas
-requests
-pygooglenews==0.1.3
-python-dotenv
-streamlit
-beautifulsoup4
+name: Well-Dying News Scraper
+
+on:
+  schedule:
+    # 매일 한국시간 아침 9시, 오후 6시 실행 (UTC 기준 0시, 9시)
+    - cron: '0 0,9 * * *'
+  workflow_dispatch: # 수동 실행 버튼 활성화
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. 코드 내려받기
+      uses: actions/checkout@v3
+
+    - name: 2. 파이썬 설치
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: 3. 라이브러리 설치 (최종 해결책!)
+      # --no-build-isolation: 깃허브가 몰래 최신 도구 가져오는 걸 막습니다.
+      run: |
+        pip install "setuptools<58.0.0"
+        pip install "wheel"
+        pip install --no-build-isolation -r requirements.txt
+
+    - name: 4. 비밀 열쇠 파일 생성
+      run: |
+        echo '${{ secrets.GOOGLE_JSON_CONTENT }}' > service_account.json
+
+    - name: 5. 수집기 실행
+      env:
+        # 깃허브 Secrets에서 환경변수 가져오기
+        GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
+        NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+        NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        GOOGLE_SHEET_JSON_PATH: service_account.json
+      run: python collector.py
